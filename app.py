@@ -1,16 +1,17 @@
-
+from dotenv import load_dotenv
 import os
 import streamlit as st
 from PIL import Image
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
-# ---------------- CONFIGURE GEMINI ----------------
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+# ---------------- LOAD ENV ----------------
+load_dotenv()
 
-# Gemini model (image + text supported)
-# model = genai.GenerativeModel("gemini-1.5-flash")
-model = genai.GenerativeModel("gemini-pro-vision")
-
+# ---------------- GEMINI CLIENT ----------------
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
 
 # ---------------- STREAMLIT CONFIG ----------------
 st.set_page_config(
@@ -18,7 +19,7 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("📄 Multi-Language Invoice Extractor")
+st.title("📄 Multi-Language Invoice Extractor (Gemini 2.5 Flash)")
 st.write("Upload an invoice image and ask questions about it.")
 
 # ---------------- USER INPUT ----------------
@@ -32,10 +33,11 @@ uploaded_file = st.file_uploader(
     type=["png", "jpg", "jpeg"]
 )
 
-image = None
+image_bytes = None
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Invoice", use_column_width=True)
+    image_bytes = uploaded_file.getvalue()
 
 submit = st.button("Analyze Invoice")
 
@@ -47,14 +49,18 @@ Translate the invoice to English if it is not in English.
 Answer strictly based on the invoice content.
 """
 
-# ---------------- GEMINI RESPONSE FUNCTION ----------------
-def get_gemini_response(user_query, image, system_prompt):
-    response = model.generate_content(
-        [
+# ---------------- GEMINI RESPONSE ----------------
+def get_gemini_response(user_query, image_bytes, system_prompt):
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=[
             system_prompt,
+            types.Part.from_bytes(
+                data=image_bytes,
+                mime_type="image/jpeg",
+            ),
             user_query,
-            image
-        ]
+        ],
     )
     return response.text
 
@@ -69,7 +75,7 @@ if submit:
             try:
                 result = get_gemini_response(
                     user_query,
-                    image,
+                    image_bytes,
                     system_prompt
                 )
                 st.subheader("✅ Response")
