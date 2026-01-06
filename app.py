@@ -1,59 +1,172 @@
+# from dotenv import load_dotenv
+# import os
+# import streamlit as st
+# from PIL import Image
+# from google import genai
+# from google.genai import types
+
+# # ---------------- LOAD ENV ----------------
+# load_dotenv()
+
+# # ---------------- GEMINI CLIENT ----------------
+# client = genai.Client(
+#     api_key=os.getenv("GEMINI_API_KEY")
+# )
+
+# # ---------------- STREAMLIT CONFIG ----------------
+# st.set_page_config(
+#     page_title="Multi-Language Invoice Extractor",
+#     layout="centered"
+# )
+
+# st.title("📄 Multi-Language Invoice Extractor (Gemini 2.5 Flash)")
+# st.write("Upload an invoice image and ask questions about it.")
+
+# # ---------------- USER INPUT ----------------
+# user_query = st.text_input(
+#     "Ask a question about the invoice:",
+#     placeholder="e.g. What is the invoice number, date, and total amount?"
+# )
+
+# uploaded_file = st.file_uploader(
+#     "Upload Invoice Image",
+#     type=["png", "jpg", "jpeg"]
+# )
+
+# image_bytes = None
+# if uploaded_file:
+#     image = Image.open(uploaded_file)
+#     st.image(image, caption="Uploaded Invoice", use_column_width=True)
+#     image_bytes = uploaded_file.getvalue()
+
+# submit = st.button("Analyze Invoice")
+
+# # ---------------- SYSTEM PROMPT ----------------
+# system_prompt = """
+# You are an expert invoice analyzer.
+# Extract accurate information from invoice images.
+# Translate the invoice to English if it is not in English.
+# Answer strictly based on the invoice content.
+# """
+
+# # ---------------- GEMINI RESPONSE ----------------
+# def get_gemini_response(user_query, image_bytes, system_prompt):
+#     response = client.models.generate_content(
+#         model="gemini-2.5-flash",
+#         contents=[
+#             system_prompt,
+#             types.Part.from_bytes(
+#                 data=image_bytes,
+#                 mime_type="image/jpeg",
+#             ),
+#             user_query,
+#         ],
+#     )
+#     return response.text
+
+# # ---------------- EXECUTION ----------------
+# if submit:
+#     if not uploaded_file:
+#         st.error("❌ Please upload an invoice image.")
+#     elif not user_query:
+#         st.error("❌ Please enter a question.")
+#     else:
+#         with st.spinner("Analyzing invoice..."):
+#             try:
+#                 result = get_gemini_response(
+#                     user_query,
+#                     image_bytes,
+#                     system_prompt
+#                 )
+#                 st.subheader("✅ Response")
+#                 st.write(result)
+#             except Exception as e:
+#                 st.error(f"Error: {e}")
+from dotenv import load_dotenv
+import os
 import streamlit as st
-import google.generativeai as genai
 from PIL import Image
-import pytesseract
-import cv2
-import numpy as np
+from google import genai
+from google.genai import types
 
-# ---------------- CONFIG ----------------
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-pro")
+# ---------------- LOAD ENV (LOCAL ONLY) ----------------
+load_dotenv()
 
+# ---------------- GEMINI CLIENT ----------------
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
+
+if not os.getenv("GEMINI_API_KEY"):
+    st.error("GEMINI_API_KEY not found. Set it as an environment variable.")
+    st.stop()
+
+# ---------------- STREAMLIT CONFIG ----------------
 st.set_page_config(
     page_title="Multi-Language Invoice Extractor",
     layout="centered"
 )
 
-st.title("📄 Multi-Language Invoice Extractor")
+st.title("📄 Multi-Language Invoice Extractor (Gemini 2.5 Flash)")
+st.write("Upload an invoice image and ask questions about it.")
 
 # ---------------- USER INPUT ----------------
+user_query = st.text_input(
+    "Ask a question about the invoice:",
+    placeholder="e.g. What is the invoice number, date, and total amount?"
+)
+
 uploaded_file = st.file_uploader(
     "Upload Invoice Image",
     type=["png", "jpg", "jpeg"]
 )
 
-user_query = st.text_input(
-    "Ask a question about the invoice",
-    placeholder="e.g. What is the invoice number and total amount?"
-)
+image_bytes = None
+if uploaded_file:
+    image = Image.open(uploaded_file)
+    st.image(image, caption="Uploaded Invoice", use_column_width=True)
+    image_bytes = uploaded_file.getvalue()
 
-# ---------------- OCR FUNCTION ----------------
-def extract_text(image):
-    img = np.array(image)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    return pytesseract.image_to_string(gray)
+submit = st.button("Analyze Invoice")
+
+# ---------------- SYSTEM PROMPT ----------------
+system_prompt = """
+You are an expert invoice analyzer.
+Extract accurate information from invoice images.
+Translate the invoice to English if it is not in English.
+Answer strictly based on the invoice content.
+"""
+
+# ---------------- GEMINI RESPONSE ----------------
+def get_gemini_response(user_query, image_bytes, system_prompt):
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=[
+            system_prompt,
+            types.Part.from_bytes(
+                data=image_bytes,
+                mime_type="image/jpeg",
+            ),
+            user_query,
+        ],
+    )
+    return response.text
 
 # ---------------- EXECUTION ----------------
-if st.button("Analyze Invoice"):
-    if not uploaded_file or not user_query:
-        st.error("Please upload an image and enter a question.")
+if submit:
+    if not uploaded_file:
+        st.error("❌ Please upload an invoice image.")
+    elif not user_query:
+        st.error("❌ Please enter a question.")
     else:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Invoice", use_column_width=True)
-
-        with st.spinner("Extracting text from invoice..."):
-            text = extract_text(image)
-
         with st.spinner("Analyzing invoice..."):
-            prompt = f"""
-            Invoice Text:
-            {text}
-
-            Question:
-            {user_query}
-
-            Answer clearly and accurately.
-            """
-            response = model.generate_content(prompt)
-            st.subheader("✅ Response")
-            st.write(response.text)
+            try:
+                result = get_gemini_response(
+                    user_query,
+                    image_bytes,
+                    system_prompt
+                )
+                st.subheader("✅ Response")
+                st.write(result)
+            except Exception as e:
+                st.error(f"Error: {e}")
