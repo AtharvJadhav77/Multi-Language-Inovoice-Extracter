@@ -8,7 +8,9 @@ import google.generativeai as genai
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Gemini model (image + text supported)
-model = genai.GenerativeModel("gemini-1.5-flash")
+# model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-pro-vision")
+
 
 # ---------------- STREAMLIT CONFIG ----------------
 st.set_page_config(
