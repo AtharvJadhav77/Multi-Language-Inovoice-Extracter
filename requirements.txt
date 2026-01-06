@@ -4,3 +4,7 @@ python-dotenv
 langchain
 PyPDF2
 chromadb
+pillow
+pytesseract
+opencv-python-headless
+numpy
